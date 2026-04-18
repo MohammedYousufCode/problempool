@@ -46,31 +46,35 @@ export default function Profile() {
   }
 
   const handleBuyCredits = async (packId: string) => {
-    const pack = CREDIT_PACKS.find(p => p.id === packId)
-    if (!pack || !user) return
-    setPayLoading(packId)
+  const pack = CREDIT_PACKS.find(p => p.id === packId)
+  if (!pack || !user) return
+  setPayLoading(packId)
 
-    const { data, error } = await callEdgeFunction<{ order_id: string; amount: number }>('razorpay-create-order', {
-      pack_id: packId,
-      user_id: user.id,
-    })
+  try {
+    // 1. Create order
+    const { data, error } = await callEdgeFunction<{ order_id: string; amount: number }>(
+      'razorpay-create-order',
+      { pack_id: packId, user_id: user.id }
+    )
 
     if (error || !data?.order_id) {
-      toast('error', error ?? 'Failed to create order')
+      toast('error', error ?? 'Failed to create payment order')
       setPayLoading(null)
       return
     }
 
-    // Load Razorpay script if not present
+    // 2. Load Razorpay script
     if (!window.Razorpay) {
-      await new Promise<void>(res => {
-  const s = document.createElement('script')
-  s.src = 'https://checkout.razorpay.com/v1/checkout.js'
-  s.onload = () => res()          // ← this line fixed
-  document.head.appendChild(s)
-})
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.onload = () => resolve()
+        script.onerror = () => reject(new Error('Failed to load Razorpay'))
+        document.head.appendChild(script)
+      })
     }
 
+    // 3. Open checkout
     const rzp = new window.Razorpay({
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: data.amount,
@@ -79,23 +83,39 @@ export default function Profile() {
       description: `${pack.name} — ${pack.credits} credits`,
       order_id: data.order_id,
       handler: async (resp) => {
-        // Webhook will handle credit addition server-side
-        await callEdgeFunction('razorpay-webhook', {
+        // ✅ Call verify-payment, NOT razorpay-webhook
+        const { error: verifyErr } = await callEdgeFunction('verify-payment', {
           razorpay_payment_id: resp.razorpay_payment_id,
           razorpay_order_id: resp.razorpay_order_id,
           razorpay_signature: resp.razorpay_signature,
           user_id: user.id,
           pack_id: packId,
         })
-        await refreshCredits()
-        toast('success', `${pack.credits} credits added to your account!`)
+
+        if (verifyErr) {
+          toast('error', `Payment done but credits failed: contact support with ID ${resp.razorpay_payment_id}`)
+        } else {
+          await refreshCredits()
+          toast('success', `🎉 ${pack.credits} credits added!`)
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setPayLoading(null)
+          toast('info', 'Payment cancelled.')
+        },
       },
       prefill: { email: user.email },
       theme: { color: '#0ea5e9' },
     })
+
     rzp.open()
+
+  } catch (err) {
+    toast('error', err instanceof Error ? err.message : 'Payment error')
     setPayLoading(null)
   }
+}
 
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
