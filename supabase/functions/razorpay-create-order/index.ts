@@ -20,6 +20,11 @@ serve(async (req) => {
 
   const KEY_ID = Deno.env.get('RAZORPAY_KEY_ID')!
   const KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET')!
+  
+  // ← ADD THIS
+  console.log('KEY_ID starts with:', KEY_ID?.slice(0, 12))
+  console.log('KEY_SECRET length:', KEY_SECRET?.length)
+
   const credentials = btoa(`${KEY_ID}:${KEY_SECRET}`)
 
   const r = await fetch('https://api.razorpay.com/v1/orders', {
@@ -29,6 +34,11 @@ serve(async (req) => {
   })
 
   const order = await r.json()
+  
+  // ← ADD THIS
+  console.log('Razorpay status:', r.status)
+  console.log('Razorpay response:', JSON.stringify(order))
+
   if (!r.ok) return new Response(JSON.stringify({ message: order.error?.description ?? 'Order creation failed' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } })
 
   return new Response(JSON.stringify({ order_id: order.id, amount: order.amount }), { headers: { ...cors, 'Content-Type': 'application/json' } })
