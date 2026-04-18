@@ -8,15 +8,15 @@ import { CREDIT_PACKS } from '../types'
 
 /* ── Domain image mapping ──────────────────────────────── */
 const DOMAIN_IMAGES: Record<string, string> = {
-  healthcare:  'photo-1559757148-5c350d0d3c56',
-  fintech:     'photo-1579621970563-ebec7560ff3e',
-  education:   'photo-1524178232363-1fb2b075b655',
-  agriculture: 'photo-1625246333195-78d9c38ad449',
-  logistics:   'photo-1586528116311-ad8dd3c8310d',
-  retail:      'photo-1441986300917-64674bd600d8',
-  'real estate':'photo-1560518883-ce09059eeffa',
-  energy:      'photo-1466611653911-95081537e5b7',
-  government:  'photo-1529107386315-e1a2ed48a620',
+  agritech:     'photo-1625246333195-78d9c38ad449',
+  cleantech:    'photo-1466611653911-95081537e5b7',
+  edtech:       'photo-1524178232363-1fb2b075b655',
+  fintech:      'photo-1579621970563-ebec7560ff3e',
+  govtech:      'photo-1529107386315-e1a2ed48a620',
+  healthtech:   'photo-1559757148-5c350d0d3c56',
+  logistics:    'photo-1586528116311-ad8dd3c8310d',
+  retailtech:   'photo-1441986300917-64674bd600d8',
+  socialimpact: 'photo-1531206715517-5c0ba140b2b8',
 }
 
 const PACK_ICONS: Record<string, string> = {
