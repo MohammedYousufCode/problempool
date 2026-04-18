@@ -64,11 +64,11 @@ export default function Profile() {
     // Load Razorpay script if not present
     if (!window.Razorpay) {
       await new Promise<void>(res => {
-        const s = document.createElement('script')
-        s.src = 'https://checkout.razorpay.com/v1/checkout.js'
-        s.onload = res
-        document.head.appendChild(s)
-      })
+  const s = document.createElement('script')
+  s.src = 'https://checkout.razorpay.com/v1/checkout.js'
+  s.onload = () => res()          // ← this line fixed
+  document.head.appendChild(s)
+})
     }
 
     const rzp = new window.Razorpay({
