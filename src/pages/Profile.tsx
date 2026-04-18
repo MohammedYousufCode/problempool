@@ -7,7 +7,7 @@ import type { Problem, CreditTransaction } from '../types'
 import { CREDIT_PACKS } from '../types'
 
 declare global { interface Window { Razorpay: new (opts: RazorpayOptions) => { open(): void }; } }
-interface RazorpayOptions { key: string; amount: number; currency: string; name: string; description: string; order_id: string; handler: (resp: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void; prefill?: { email?: string; name?: string }; theme?: { color?: string } }
+interface RazorpayOptions { key: string; amount: number; currency: string; name: string; description: string; order_id: string; handler: (resp: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void; modal?: { ondismiss?: () => void }; prefill?: { email?: string; name?: string }; theme?: { color?: string } }
 
 export default function Profile() {
   const { user, credits, refreshCredits } = useAuth()
