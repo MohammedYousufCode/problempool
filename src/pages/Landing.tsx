@@ -213,16 +213,16 @@ export default function Landing() {
                 ))}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <TrendingUp size={13} style={{ color: 'var(--color-success)' }} />
-                  <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text)' }}>
-                    500+ founders
-                  </span>
-                </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                  already building on ProblemPool
-                </span>
-              </div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+    <TrendingUp size={13} style={{ color: 'var(--color-success)' }} />
+    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text)' }}>
+      90+ problems submitted by real users
+    </span>
+  </div>
+  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+    across 9 Indian market domains
+  </span>
+</div>
             </div>
           </div>
         </div>

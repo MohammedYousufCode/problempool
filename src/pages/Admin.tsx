@@ -10,7 +10,7 @@ export default function Admin() {
   const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || ''
+  const adminEmail = 'mohammedyousuf8505@gmail.com'
 
   const [problems, setProblems] = useState<Problem[]>([])
   const [loading, setLoading] = useState(true)

@@ -6,8 +6,6 @@ import { useTheme } from '../lib/theme'
 
 /* ── Admin emails — add yours here ───────────────────────── */
 const ADMIN_EMAILS = [
-  'admin@problempool.tech',
-  'founder@problempool.tech',
   'mohammedyousuf8505@gmail.com',
   // add more admin emails as needed
 ]
