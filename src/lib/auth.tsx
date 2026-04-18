@@ -28,11 +28,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Upsert user_credits row (creates with 50 if not exists)
     const { data: existing } = await supabase.from('user_credits').select('credits, user_id').eq('user_id', u.id).single()
     if (!existing) {
-      await supabase.from('user_credits').insert({ user_id: u.id, credits: 50, digest_opt_in: false })
-      await supabase.from('credit_transactions').insert({ user_id: u.id, amount: 50, reason: 'Welcome bonus' })
+      await supabase.from('user_credits').insert({ user_id: u.id, credits: 100, digest_opt_in: false })
+await supabase.from('credit_transactions').insert({ user_id: u.id, amount: 100, reason: 'Welcome bonus' })
+
       // Send welcome email
       await callEdgeFunction('send-welcome-email', { email: u.email, name: u.user_metadata?.full_name })
-      setCredits(50)
+      setCredits(100)
     } else {
       setCredits(existing.credits)
     }

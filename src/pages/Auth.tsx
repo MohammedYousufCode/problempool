@@ -133,7 +133,7 @@ export default function Auth() {
               <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left' }}>
                 {[
                   '🎯 AI-validated problem statements',
-                  '⚡ 50 free credits on signup',
+                  '⚡ 100 free credits on signup',
                   '🚀 Get AI build plans instantly',
                   '🇮🇳 Built for Indian founders',
                 ].map((feat) => (
@@ -184,7 +184,7 @@ export default function Auth() {
               </h1>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
                 {mode === 'signup'
-                  ? 'Get 50 free credits on signup — no card needed'
+                  ? 'Get 100 free credits on signup — no card needed'
                   : 'Sign in to access your problems and credits'}
               </p>
             </div>

@@ -174,12 +174,12 @@ export default function Landing() {
                 Browse Problems <ArrowRight size={18} />
               </Link>
               <Link to="/auth" className="btn btn-secondary btn-lg">
-                Get 50 Free Credits
-              </Link>
+  Get 100 Free Credits
+</Link>
             </div>
 
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-              Free to join · 50 credits on signup · No subscription
+              Free to join · 100 credits on signup · No subscription
             </p>
 
             {/* ── Social proof ─────────────────────── */}
