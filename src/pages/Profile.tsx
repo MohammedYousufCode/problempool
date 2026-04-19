@@ -83,21 +83,20 @@ export default function Profile() {
       description: `${pack.name} — ${pack.credits} credits`,
       order_id: data.order_id,
       handler: async (resp) => {
-        // ✅ Call verify-payment, NOT razorpay-webhook
+        // Only send payment proof — server looks up user_id from DB by order_id
         const { error: verifyErr } = await callEdgeFunction('verify-payment', {
           razorpay_payment_id: resp.razorpay_payment_id,
-          razorpay_order_id: resp.razorpay_order_id,
-          razorpay_signature: resp.razorpay_signature,
-          user_id: user.id,
-          pack_id: packId,
+          razorpay_order_id:   resp.razorpay_order_id,
+          razorpay_signature:  resp.razorpay_signature,
         })
 
         if (verifyErr) {
-          toast('error', `Payment done but credits failed: contact support with ID ${resp.razorpay_payment_id}`)
+          toast('error', `Payment done but credits failed — contact support with ID ${resp.razorpay_payment_id}`)
         } else {
           await refreshCredits()
           toast('success', `🎉 ${pack.credits} credits added!`)
         }
+        setPayLoading(null)
       },
       modal: {
         ondismiss: () => {

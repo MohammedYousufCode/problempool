@@ -97,13 +97,19 @@ export default function ProblemDetail() {
     if (!user || !problem) return
     if (credits < CREDIT_COSTS.UNLOCK_PROBLEM) { toast('error', `Need ${CREDIT_COSTS.UNLOCK_PROBLEM} credits to unlock.`); return }
     setUnlocking(true)
-    try {
-      await supabase.rpc('deduct_credits', { p_user_id: user.id, p_amount: CREDIT_COSTS.UNLOCK_PROBLEM, p_reason: `Unlocked problem ${problem.id}` })
-      await supabase.from('unlocked_problems').insert({ user_id: user.id, problem_id: problem.id })
+    // Server-side atomic function: deducts credits + inserts unlock row in one DB transaction
+    // Cannot be bypassed via DevTools — user_id is read from the JWT on the server
+    const { data, error } = await callEdgeFunction<{ success: boolean; already_unlocked?: boolean }>(
+      'unlock-problem',
+      { action: 'unlock', problem_id: problem.id }
+    )
+    if (error) {
+      toast('error', error)
+    } else if (data?.success) {
       await refreshCredits()
       setIsUnlocked(true)
       toast('success', 'Problem unlocked!')
-    } catch { toast('error', 'Failed to unlock') }
+    }
     setUnlocking(false)
   }
 
@@ -116,23 +122,23 @@ export default function ProblemDetail() {
     if (aiBuildVisible) { setAiBuildVisible(false); return }
 
     setAiBuildLoading(true)
-    try {
-      if (!aiBuildUsed) {
-        await supabase.rpc('deduct_credits', { p_user_id: user.id, p_amount: CREDIT_COSTS.AI_BUILD_PANEL, p_reason: `AI Build Panel: ${problem.id}` })
-        await refreshCredits()
-        setAiBuildUsed(true)
-      }
-
-      const { data, error } = await callEdgeFunction<{ content: string }>('validate-problem', {
-        mode: 'build_plan',
+    // Server-side: deducts credits first, then calls GROQ, refunds on failure
+    // user_id is read from JWT — cannot be skipped or spoofed from the browser
+    const { data, error } = await callEdgeFunction<{ success: boolean; content: string; credits_deducted?: boolean }>(
+      'unlock-problem',
+      {
+        action: 'ai_build',
+        problem_id: problem.id,
         problem: { title: problem.title, description: problem.description, who_faces_it: problem.who_faces_it },
-      })
-
-      if (error) throw new Error(error)
-      setAiBuildContent(data?.content ?? '')
+      }
+    )
+    if (error) {
+      toast('error', error)
+    } else if (data?.success) {
+      if (data.credits_deducted) await refreshCredits()
+      setAiBuildUsed(true)
+      setAiBuildContent(data.content ?? '')
       setAiBuildVisible(true)
-    } catch (err) {
-      toast('error', err instanceof Error ? err.message : 'AI request failed')
     }
     setAiBuildLoading(false)
   }
