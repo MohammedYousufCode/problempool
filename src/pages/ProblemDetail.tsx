@@ -37,7 +37,7 @@ export default function ProblemDetail() {
   const { toast } = useToast()
 
   const [problem, setProblem] = useState<PublicProblem | null>(null)
-  const [gated, setGated] = useState<GatedContent | null>(null)   // null = not loaded yet
+  const [gated, setGated] = useState<GatedContent | null>(null)
   const [related, setRelated] = useState<Problem[]>([])
   const [loading, setLoading] = useState(true)
   const [relatable, setRelatable] = useState(false)
@@ -52,12 +52,9 @@ export default function ProblemDetail() {
   const [aiBuildLoading, setAiBuildLoading] = useState(false)
   const [aiBuildUsed, setAiBuildUsed] = useState(false)
 
-  // Fetch gated content from a separate secured query.
-  // Supabase RLS on problems only returns description/who_faces_it
-  // if the user has a row in unlocked_problems — enforced DB-side.
   const fetchGatedContent = async (problemId: string) => {
     const { data } = await supabase
-      .from('unlocked_problem_content')   // secure view — see SQL below
+      .from('unlocked_problem_content')
       .select('description, who_faces_it')
       .eq('id', problemId)
       .maybeSingle()
@@ -65,73 +62,73 @@ export default function ProblemDetail() {
   }
 
   useEffect(() => {
-  if (!id) return
-  const load = async () => {
-    // ✅ Reset all stale state before loading new problem
-    setLoading(true)
-    setIsUnlocked(false)
-    setGated(null)
-    setAiBuildVisible(false)
-    setAiBuildContent('')
-    setAiBuildUsed(false)
-    setRelatable(false)
-    setRelatableCount(0)
-    setProblem(null)
-    setRelated([])
+    if (!id) return
+    const load = async () => {
+      // Reset all stale state before loading new problem
+      setLoading(true)
+      setIsUnlocked(false)
+      setGated(null)
+      setAiBuildVisible(false)
+      setAiBuildContent('')
+      setAiBuildUsed(false)
+      setRelatable(false)
+      setRelatableCount(0)
+      setProblem(null)
+      setRelated([])
 
-    // Fetch only PUBLIC fields — description and who_faces_it are NOT selected here
-    const { data: p } = await supabase
-      .from('problems')
-      .select('id, title, domain_id, domain:domains(*), difficulty, feasibility, ai_score, submitted_by, is_approved, created_at, relatables(count)')
-      .eq('id', id)
-      .eq('is_approved', true)
-      .single()
-
-    if (!p) { setLoading(false); return }
-    setRelatableCount(p.relatables?.[0]?.count ?? 0)
-
-    if (user) {
-      const [{ data: unlocked }, { data: rel }] = await Promise.all([
-        supabase.from('unlocked_problems').select('problem_id').eq('user_id', user.id).eq('problem_id', id).maybeSingle(),
-        supabase.from('relatables').select('id').eq('user_id', user.id).eq('problem_id', id).maybeSingle(),
-      ])
-      const alreadyUnlocked = !!unlocked
-      setIsUnlocked(alreadyUnlocked)
-      setRelatable(!!rel)
-
-      // If already unlocked, fetch gated content now
-      if (alreadyUnlocked) await fetchGatedContent(id)
-
+      // Fetch public fields + submitter name
       const { data: p } = await supabase
-  .from('problems')
-  .select(`
-    id, title, domain_id, domain:domains(*),
-    difficulty, feasibility, ai_score,
-    submitted_by, is_approved, created_at,
-    relatables(count),
-    submitter:profiles!submitted_by(full_name, avatar_url)
-  `)
-  .eq('id', id)
-  .eq('is_approved', true)
-  .single()  // ✅ was .single() — caused 406
-      setAiBuildUsed(!!tx)
+        .from('problems')
+        .select(`
+          id, title, domain_id, domain:domains(*),
+          difficulty, feasibility, ai_score,
+          submitted_by, is_approved, created_at,
+          relatables(count),
+          submitter:profiles!submitted_by(full_name, avatar_url)
+        `)
+        .eq('id', id)
+        .eq('is_approved', true)
+        .single()
+
+      if (!p) { setLoading(false); return }
+      setRelatableCount(p.relatables?.[0]?.count ?? 0)
+
+      if (user) {
+        const [{ data: unlocked }, { data: rel }] = await Promise.all([
+          supabase.from('unlocked_problems').select('problem_id').eq('user_id', user.id).eq('problem_id', id).maybeSingle(),
+          supabase.from('relatables').select('id').eq('user_id', user.id).eq('problem_id', id).maybeSingle(),
+        ])
+        const alreadyUnlocked = !!unlocked
+        setIsUnlocked(alreadyUnlocked)
+        setRelatable(!!rel)
+
+        if (alreadyUnlocked) await fetchGatedContent(id)
+
+        const { data: tx } = await supabase
+          .from('credit_transactions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('reason', `AI Build Panel: ${id}`)
+          .maybeSingle()
+        setAiBuildUsed(!!tx)
+      }
+
+      setProblem(p as unknown as PublicProblem)
+
+      supabase
+        .from('problems')
+        .select('*, domain:domains(*), relatables(count)')
+        .eq('domain_id', p.domain_id)
+        .eq('is_approved', true)
+        .neq('id', id)
+        .limit(3)
+        .then(({ data: rel }) => { if (rel) setRelated(rel as unknown as Problem[]) })
+
+      setLoading(false)
     }
+    load()
+  }, [id, user])
 
-    setProblem(p as unknown as PublicProblem)
-
-    supabase
-      .from('problems')
-      .select('*, domain:domains(*), relatables(count)')
-      .eq('domain_id', p.domain_id)
-      .eq('is_approved', true)
-      .neq('id', id)
-      .limit(3)
-      .then(({ data: rel }) => { if (rel) setRelated(rel as unknown as Problem[]) })
-
-    setLoading(false)
-  }
-  load()
-}, [id, user])
   const handleRelatable = async () => {
     if (!user || !problem) { toast('info', 'Sign in to mark problems as relatable'); return }
     setRelatableLoading(true)
@@ -160,7 +157,6 @@ export default function ProblemDetail() {
     } else if (data?.success) {
       await refreshCredits()
       setIsUnlocked(true)
-      // Only NOW fetch the gated content — after server confirmed the unlock
       await fetchGatedContent(problem.id)
       toast('success', 'Problem unlocked!')
     }
@@ -244,7 +240,6 @@ export default function ProblemDetail() {
 
             <div className="divider" />
 
-            {/* Who faces it — only rendered if gated content is loaded */}
             <div style={{ marginBottom: '1.25rem' }}>
               <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Who Faces This</h2>
               {gated ? (
@@ -259,7 +254,6 @@ export default function ProblemDetail() {
               )}
             </div>
 
-            {/* Description — only rendered if gated content is loaded */}
             <div style={{ marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Problem Description</h2>
               {gated ? (
@@ -285,7 +279,6 @@ export default function ProblemDetail() {
               )}
             </div>
 
-            {/* Unlock CTA */}
             {(locked || notLoggedIn) && (
               <div style={{ padding: '1.25rem', background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.15)', borderRadius: 'var(--radius-lg)', marginBottom: '1.5rem', textAlign: 'center' }}>
                 <Lock size={24} style={{ color: 'var(--color-primary)', margin: '0 auto 0.5rem' }} />
@@ -304,7 +297,6 @@ export default function ProblemDetail() {
               </div>
             )}
 
-            {/* Actions */}
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button onClick={handleRelatable} disabled={relatableLoading} className={`btn ${relatable ? 'btn-primary' : 'btn-secondary'}`}>
                 <Heart size={15} fill={relatable ? 'currentColor' : 'none'} />
@@ -320,7 +312,6 @@ export default function ProblemDetail() {
             </div>
           </div>
 
-          {/* AI Build Panel */}
           {aiBuildVisible && aiBuildContent && (
             <div className="card page-enter" style={{ padding: 'clamp(1.25rem, 3vw, 2rem)', borderTop: '3px solid var(--color-primary)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -374,7 +365,6 @@ export default function ProblemDetail() {
             </div>
           )}
 
-          {/* Related problems */}
           {related.length > 0 && (
             <div>
               <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: '1rem' }}>Related Problems</h2>
