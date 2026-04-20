@@ -59,7 +59,7 @@ export default function ProblemDetail() {
       .from('unlocked_problem_content')   // secure view — see SQL below
       .select('description, who_faces_it')
       .eq('id', problemId)
-      .single()
+      .maybeSingle()
     if (data) setGated(data as GatedContent)
   }
 

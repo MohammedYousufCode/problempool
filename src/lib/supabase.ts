@@ -10,24 +10,25 @@ export async function callEdgeFunction<T = unknown>(
   body: Record<string, unknown>
 ): Promise<{ data: T | null; error: string | null }> {
   try {
+    // ✅ Force token refresh before reading session (fixes ES256 401 errors)
+    await supabase.auth.getUser()
     const { data: { session } } = await supabase.auth.getSession()
-    
-    const headers: Record<string, string> = { 
-      'Content-Type': 'application/json',
-      // Always send anon key — avoids ES256 JWT verification issue
-      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-    }
-    
-    // Send user token only if available
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
-    } else {
-      headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+
+    if (!session?.access_token) {
+      return { data: null, error: 'Not authenticated' }
     }
 
     const resp = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`,
-      { method: 'POST', headers, body: JSON.stringify(body) }
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+      }
     )
 
     if (!resp.ok) {
@@ -35,8 +36,7 @@ export async function callEdgeFunction<T = unknown>(
       return { data: null, error: err.message ?? `HTTP ${resp.status}` }
     }
 
-    const data = await resp.json()
-    return { data: data as T, error: null }
+    return { data: await resp.json() as T, error: null }
   } catch (err) {
     return { data: null, error: err instanceof Error ? err.message : 'Network error' }
   }
