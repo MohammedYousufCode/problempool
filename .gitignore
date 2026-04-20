@@ -52,3 +52,24 @@ desktop.ini
 *.sln
 *.sw?
 
+# ─── Supabase Local Dev ──────────────────────────────
+.supabase/
+supabase/.env.local
+supabase/config.toml
+
+# ─── Test / Coverage ─────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+
+# ─── Package manager locks (keep only one) ───────────
+yarn.lock
+pnpm-lock.yaml
+
+# ─── Misc ────────────────────────────────────────────
+*.pem
+*.key
+*.cert
+.cache/
+.temp/
+tmp/

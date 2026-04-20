@@ -85,8 +85,25 @@ export default function Landing() {
           overflow: 'hidden',
         }}>
           <div className="ticker-inner">
-            {[...ticker, ...ticker].map((p, i) => (
-              <span key={`${p.id}-${i}`} style={{
+            {/* First copy — visible to screen readers */}
+            {ticker.map((p, i) => (
+              <span key={`a-${p.id}-${i}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0 2rem',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-muted)',
+                whiteSpace: 'nowrap',
+              }}>
+                <span style={{ color: 'var(--color-primary)', fontSize: '0.5rem' }}>●</span>
+                {(p as unknown as { domain: { icon: string } }).domain?.icon} {p.title}
+                <span className={`badge badge-${p.difficulty?.toLowerCase()}`} style={{ fontSize: '0.63rem', padding: '0.1rem 0.4rem' }}>
+                  {p.difficulty}
+                </span>
+              </span>
+            ))}
+            {/* Second copy — duplicate for CSS scroll loop, hidden from screen readers and search bots */}
+            {ticker.map((p, i) => (
+              <span key={`b-${p.id}-${i}`} aria-hidden="true" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                 padding: '0 2rem',
                 fontSize: 'var(--text-xs)',
