@@ -1,3 +1,5 @@
+
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import Navbar from './components/Navbar'
