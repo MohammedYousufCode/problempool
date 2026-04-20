@@ -40,34 +40,59 @@ export default function Submit() {
       return
     }
     setValidating(true)
-    const { data, error } = await callEdgeFunction<ValidateResult>('validate-problem', {
-      mode: 'validate',
-      problem: form,
-    })
-    setValidating(false)
-    if (error) { toast('error', error); return }
-    if (!data) { toast('error', 'Validation failed'); return }
-    setValidated(data)
-    setStep('preview')
+    try {
+      const { data, error } = await callEdgeFunction<ValidateResult>('validate-problem', {
+        mode: 'validate',
+        problem: form,
+      })
+      if (error) {
+        toast('error', typeof error === 'string' ? error : 'Validation failed')
+        return
+      }
+      if (!data || typeof data !== 'object') {
+        toast('error', 'Unexpected response from server')
+        return
+      }
+      // Sanitise response so no raw objects can sneak into React render
+      const safe: ValidateResult = {
+        ai_score: typeof data.ai_score === 'number' ? data.ai_score : 0,
+        cleaned_title: typeof data.cleaned_title === 'string' ? data.cleaned_title : undefined,
+        cleaned_description: typeof data.cleaned_description === 'string' ? data.cleaned_description : undefined,
+        rejection_reason: typeof data.rejection_reason === 'string' ? data.rejection_reason : undefined,
+        is_duplicate: Boolean(data.is_duplicate),
+        duplicate_id: typeof data.duplicate_id === 'string' ? data.duplicate_id : undefined,
+      }
+      setValidated(safe)
+      setStep('preview')
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Validation failed')
+    } finally {
+      setValidating(false)
+    }
   }
 
   const handleSave = async () => {
     if (!user || !validated) return
     setSaving(true)
-    const { error } = await supabase.from('problems').insert({
-      title: validated.cleaned_title ?? form.title,
-      description: validated.cleaned_description ?? form.description,
-      domain_id: form.domain_id,
-      who_faces_it: form.who_faces_it,
-      difficulty: form.difficulty,
-      feasibility: form.feasibility,
-      ai_score: validated.ai_score,
-      submitted_by: user.id,
-      is_approved: false,
-    })
-    setSaving(false)
-    if (error) { toast('error', error.message); return }
-    setStep('done')
+    try {
+      const { error } = await supabase.from('problems').insert({
+        title: validated.cleaned_title ?? form.title,
+        description: validated.cleaned_description ?? form.description,
+        domain_id: form.domain_id,
+        who_faces_it: form.who_faces_it,
+        difficulty: form.difficulty,
+        feasibility: form.feasibility,
+        ai_score: validated.ai_score,
+        submitted_by: user.id,
+        is_approved: false,
+      })
+      if (error) { toast('error', error.message ?? 'Failed to save'); return }
+      setStep('done')
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (step === 'done') return (

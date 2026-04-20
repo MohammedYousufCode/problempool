@@ -4,15 +4,27 @@ import { CheckCircle, AlertCircle, Info, X } from 'lucide-react'
 type ToastType = 'success' | 'error' | 'info'
 interface Toast { id: string; type: ToastType; message: string }
 
+/** Safely coerce anything to a display string — prevents React error #31 */
+function toMessage(raw: unknown): string {
+  if (typeof raw === 'string') return raw || 'Something went wrong'
+  if (raw instanceof Error) return raw.message || 'Something went wrong'
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>
+    if (typeof obj.message === 'string') return obj.message
+    if (typeof obj.error === 'string') return obj.error
+    if (typeof obj.msg === 'string') return obj.msg
+    try { return JSON.stringify(raw) } catch { /* noop */ }
+  }
+  return 'Something went wrong'
+}
+
 const ToastCtx = createContext<{ toast: (type: ToastType, message: unknown) => void }>({ toast: () => {} })
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const toast = useCallback((type: ToastType, message: unknown) => {
-    const msg = typeof message === 'string'
-      ? message
-      : (message as any)?.message ?? 'Something went wrong'
+    const msg = toMessage(message)
     const id = Math.random().toString(36).slice(2)
     setToasts((prev: Toast[]) => [...prev, { id, type, message: msg }])
     setTimeout(() => setToasts((prev: Toast[]) => prev.filter((t: Toast) => t.id !== id)), 4500)
