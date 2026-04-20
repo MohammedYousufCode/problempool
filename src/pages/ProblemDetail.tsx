@@ -78,20 +78,28 @@ export default function ProblemDetail() {
 
       // Fetch public fields + submitter name
       const { data: p } = await supabase
-        .from('problems')
-        .select(`
-          id, title, domain_id, domain:domains(*),
-          difficulty, feasibility, ai_score,
-          submitted_by, is_approved, created_at,
-          relatables(count),
-          submitter:profiles!submitted_by(full_name, avatar_url)
-        `)
-        .eq('id', id)
-        .eq('is_approved', true)
-        .single()
+  .from('problems')
+  .select(`
+    id, title, domain_id, domain:domains(*),
+    difficulty, feasibility, ai_score,
+    submitted_by, is_approved, created_at,
+    relatables(count)
+  `)
+  .eq('id', id)
+  .eq('is_approved', true)
+  .single()
 
-      if (!p) { setLoading(false); return }
-      setRelatableCount(p.relatables?.[0]?.count ?? 0)
+if (!p) { setLoading(false); return }
+setRelatableCount(p.relatables?.[0]?.count ?? 0)
+let submitterName: string | null = null
+if (p.submitted_by) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', p.submitted_by)
+    .maybeSingle()
+  submitterName = profile?.full_name ?? null
+}
 
       if (user) {
         const [{ data: unlocked }, { data: rel }] = await Promise.all([
@@ -113,7 +121,7 @@ export default function ProblemDetail() {
         setAiBuildUsed(!!tx)
       }
 
-      setProblem(p as unknown as PublicProblem)
+      setProblem({ ...p, submitter: { full_name: submitterName, avatar_url: null } } as unknown as PublicProblem)
 
       supabase
         .from('problems')
