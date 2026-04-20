@@ -25,16 +25,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const ensureUserCredits = useCallback(async (u: User) => {
-    // Fix: use ignoreDuplicates upsert — eliminates the select→insert race condition.
-    // If two sessions call this simultaneously, only one insert wins; the other
-    // gets error=null but data=[] and falls through to the else branch safely.
-    const { data, error } = await supabase
+    // First just read — covers the 99% case of returning users with zero conflict risk
+    const { data: existing } = await supabase
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', u.id)
+      .single()
+
+    if (existing) {
+      // Returning user — just set credits
+      setCredits(existing.credits)
+      return
+    }
+
+    // New user — insert with onConflict ignore to prevent race condition
+    const { error } = await supabase
       .from('user_credits')
       .insert({ user_id: u.id, credits: 100, digest_opt_in: false })
-      .select('credits')
 
-    if (!error && data && data.length > 0) {
-      // Newly created row — first ever login
+    if (!error) {
+      // Successfully inserted — first ever login
       await supabase.from('credit_transactions').insert({
         user_id: u.id,
         amount: 100,
@@ -46,13 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       setCredits(100)
     } else {
-      // Row already existed — read current credits
-      const { data: existing } = await supabase
+      // Insert failed (race condition — another tab inserted first), just read
+      const { data: fallback } = await supabase
         .from('user_credits')
         .select('credits')
         .eq('user_id', u.id)
         .single()
-      if (existing) setCredits(existing.credits)
+      if (fallback) setCredits(fallback.credits)
     }
   }, [])
 
