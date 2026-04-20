@@ -22,6 +22,7 @@ interface PublicProblem {
   is_approved: boolean
   created_at: string
   relatables?: { count: number }[]
+  submitter?: { full_name: string | null; avatar_url: string | null } | null
 }
 
 // Gated fields — only fetched after server confirms unlock
@@ -101,12 +102,18 @@ export default function ProblemDetail() {
       // If already unlocked, fetch gated content now
       if (alreadyUnlocked) await fetchGatedContent(id)
 
-      const { data: tx } = await supabase
-        .from('credit_transactions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('reason', `AI Build Panel: ${id}`)
-        .maybeSingle()  // ✅ was .single() — caused 406
+      const { data: p } = await supabase
+  .from('problems')
+  .select(`
+    id, title, domain_id, domain:domains(*),
+    difficulty, feasibility, ai_score,
+    submitted_by, is_approved, created_at,
+    relatables(count),
+    submitter:profiles!submitted_by(full_name, avatar_url)
+  `)
+  .eq('id', id)
+  .eq('is_approved', true)
+  .single()  // ✅ was .single() — caused 406
       setAiBuildUsed(!!tx)
     }
 
@@ -229,7 +236,7 @@ export default function ProblemDetail() {
               <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>{problem.title}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                 <User size={13} />
-                <span>Submitted by {problem.submitted_by ? 'a member' : 'Anonymous'}</span>
+                <span>Submitted by {problem.submitter?.full_name ?? 'Anonymous'}</span>
                 <span>·</span>
                 <span>{new Date(problem.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               </div>
