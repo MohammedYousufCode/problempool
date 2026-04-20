@@ -64,58 +64,67 @@ export default function ProblemDetail() {
   }
 
   useEffect(() => {
-    if (!id) return
-    const load = async () => {
-      setLoading(true)
+  if (!id) return
+  const load = async () => {
+    // ✅ Reset all stale state before loading new problem
+    setLoading(true)
+    setIsUnlocked(false)
+    setGated(null)
+    setAiBuildVisible(false)
+    setAiBuildContent('')
+    setAiBuildUsed(false)
+    setRelatable(false)
+    setRelatableCount(0)
+    setProblem(null)
+    setRelated([])
 
-      // Fetch only PUBLIC fields — description and who_faces_it are NOT selected here
-      const { data: p } = await supabase
-        .from('problems')
-        .select('id, title, domain_id, domain:domains(*), difficulty, feasibility, ai_score, submitted_by, is_approved, created_at, relatables(count)')
-        .eq('id', id)
-        .eq('is_approved', true)
-        .single()
+    // Fetch only PUBLIC fields — description and who_faces_it are NOT selected here
+    const { data: p } = await supabase
+      .from('problems')
+      .select('id, title, domain_id, domain:domains(*), difficulty, feasibility, ai_score, submitted_by, is_approved, created_at, relatables(count)')
+      .eq('id', id)
+      .eq('is_approved', true)
+      .single()
 
-      if (!p) { setLoading(false); return }
-      setRelatableCount(p.relatables?.[0]?.count ?? 0)
+    if (!p) { setLoading(false); return }
+    setRelatableCount(p.relatables?.[0]?.count ?? 0)
 
-      if (user) {
-        const [{ data: unlocked }, { data: rel }] = await Promise.all([
-          supabase.from('unlocked_problems').select('problem_id').eq('user_id', user.id).eq('problem_id', id).single(),
-          supabase.from('relatables').select('id').eq('user_id', user.id).eq('problem_id', id).single(),
-        ])
-        const alreadyUnlocked = !!unlocked
-        setIsUnlocked(alreadyUnlocked)
-        setRelatable(!!rel)
+    if (user) {
+      const [{ data: unlocked }, { data: rel }] = await Promise.all([
+        supabase.from('unlocked_problems').select('problem_id').eq('user_id', user.id).eq('problem_id', id).maybeSingle(),
+        supabase.from('relatables').select('id').eq('user_id', user.id).eq('problem_id', id).maybeSingle(),
+      ])
+      const alreadyUnlocked = !!unlocked
+      setIsUnlocked(alreadyUnlocked)
+      setRelatable(!!rel)
 
-        // If already unlocked, fetch gated content now
-        if (alreadyUnlocked) await fetchGatedContent(id)
+      // If already unlocked, fetch gated content now
+      if (alreadyUnlocked) await fetchGatedContent(id)
 
-        const { data: tx } = await supabase
-          .from('credit_transactions')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('reason', `AI Build Panel: ${id}`)
-          .single()
-        setAiBuildUsed(!!tx)
-      }
-
-      setProblem(p as unknown as PublicProblem)
-
-      supabase
-        .from('problems')
-        .select('*, domain:domains(*), relatables(count)')
-        .eq('domain_id', p.domain_id)
-        .eq('is_approved', true)
-        .neq('id', id)
-        .limit(3)
-        .then(({ data: rel }) => { if (rel) setRelated(rel as unknown as Problem[]) })
-
-      setLoading(false)
+      const { data: tx } = await supabase
+        .from('credit_transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('reason', `AI Build Panel: ${id}`)
+        .maybeSingle()  // ✅ was .single() — caused 406
+      setAiBuildUsed(!!tx)
     }
-    load()
-  }, [id, user])
 
+    setProblem(p as unknown as PublicProblem)
+
+    supabase
+      .from('problems')
+      .select('*, domain:domains(*), relatables(count)')
+      .eq('domain_id', p.domain_id)
+      .eq('is_approved', true)
+      .neq('id', id)
+      .limit(3)
+      .then(({ data: rel }) => { if (rel) setRelated(rel as unknown as Problem[]) })
+
+    setLoading(false)
+  }
+  load()
+}, [id, user])
   const handleRelatable = async () => {
     if (!user || !problem) { toast('info', 'Sign in to mark problems as relatable'); return }
     setRelatableLoading(true)
