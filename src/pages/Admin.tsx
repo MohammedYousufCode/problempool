@@ -65,7 +65,7 @@ export default function Admin() {
   const handleDigest = async () => {
     setDigestLoading(true)
     const { error } = await callEdgeFunction('send-weekly-digest', {})
-    if (error) toast('error', error.message ?? 'Something went wrong')
+    if (error) toast('error', error)
     else toast('success', 'Weekly digest sent to all opted-in users!')
     setDigestLoading(false)
   }

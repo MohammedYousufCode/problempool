@@ -161,7 +161,7 @@ if (p.submitted_by) {
       { action: 'unlock', problem_id: problem.id }
     )
     if (error) {
-      toast('error', typeof error === 'string' ? error : error?.message ?? 'Something went wrong')
+      toast('error', error)
     } else if (data?.success) {
       await refreshCredits()
       setIsUnlocked(true)
@@ -189,7 +189,7 @@ if (p.submitted_by) {
       }
     )
     if (error) {
-      toast('error', typeof error === 'string' ? error : error?.message ?? 'Something went wrong')
+      toast('error', error)
     } else if (data?.success) {
       if (data.credits_deducted) await refreshCredits()
       setAiBuildUsed(true)
