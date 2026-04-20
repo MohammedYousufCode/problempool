@@ -9,12 +9,34 @@ import SkeletonCard from '../components/SkeletonCard'
 import type { Problem } from '../types'
 import { CREDIT_COSTS } from '../types'
 
+// Public fields only — never includes description or who_faces_it
+interface PublicProblem {
+  id: string
+  title: string
+  domain_id: string
+  domain?: { id: string; name: string; icon: string; color: string; slug: string; description: string; created_at: string }
+  difficulty: string
+  feasibility: string
+  ai_score: number
+  submitted_by: string | null
+  is_approved: boolean
+  created_at: string
+  relatables?: { count: number }[]
+}
+
+// Gated fields — only fetched after server confirms unlock
+interface GatedContent {
+  description: string
+  who_faces_it: string
+}
+
 export default function ProblemDetail() {
   const { id } = useParams<{ id: string }>()
   const { user, credits, refreshCredits } = useAuth()
   const { toast } = useToast()
 
-  const [problem, setProblem] = useState<Problem | null>(null)
+  const [problem, setProblem] = useState<PublicProblem | null>(null)
+  const [gated, setGated] = useState<GatedContent | null>(null)   // null = not loaded yet
   const [related, setRelated] = useState<Problem[]>([])
   const [loading, setLoading] = useState(true)
   const [relatable, setRelatable] = useState(false)
@@ -29,13 +51,27 @@ export default function ProblemDetail() {
   const [aiBuildLoading, setAiBuildLoading] = useState(false)
   const [aiBuildUsed, setAiBuildUsed] = useState(false)
 
+  // Fetch gated content from a separate secured query.
+  // Supabase RLS on problems only returns description/who_faces_it
+  // if the user has a row in unlocked_problems — enforced DB-side.
+  const fetchGatedContent = async (problemId: string) => {
+    const { data } = await supabase
+      .from('unlocked_problem_content')   // secure view — see SQL below
+      .select('description, who_faces_it')
+      .eq('id', problemId)
+      .single()
+    if (data) setGated(data as GatedContent)
+  }
+
   useEffect(() => {
     if (!id) return
     const load = async () => {
       setLoading(true)
+
+      // Fetch only PUBLIC fields — description and who_faces_it are NOT selected here
       const { data: p } = await supabase
         .from('problems')
-        .select('*, domain:domains(*), relatables(count)')
+        .select('id, title, domain_id, domain:domains(*), difficulty, feasibility, ai_score, submitted_by, is_approved, created_at, relatables(count)')
         .eq('id', id)
         .eq('is_approved', true)
         .single()
@@ -48,10 +84,13 @@ export default function ProblemDetail() {
           supabase.from('unlocked_problems').select('problem_id').eq('user_id', user.id).eq('problem_id', id).single(),
           supabase.from('relatables').select('id').eq('user_id', user.id).eq('problem_id', id).single(),
         ])
-        setIsUnlocked(!!unlocked)
+        const alreadyUnlocked = !!unlocked
+        setIsUnlocked(alreadyUnlocked)
         setRelatable(!!rel)
 
-        // Check if AI build was already purchased
+        // If already unlocked, fetch gated content now
+        if (alreadyUnlocked) await fetchGatedContent(id)
+
         const { data: tx } = await supabase
           .from('credit_transactions')
           .select('id')
@@ -61,9 +100,8 @@ export default function ProblemDetail() {
         setAiBuildUsed(!!tx)
       }
 
-      setProblem(p as unknown as Problem)
+      setProblem(p as unknown as PublicProblem)
 
-      // Related problems
       supabase
         .from('problems')
         .select('*, domain:domains(*), relatables(count)')
@@ -97,8 +135,6 @@ export default function ProblemDetail() {
     if (!user || !problem) return
     if (credits < CREDIT_COSTS.UNLOCK_PROBLEM) { toast('error', `Need ${CREDIT_COSTS.UNLOCK_PROBLEM} credits to unlock.`); return }
     setUnlocking(true)
-    // Server-side atomic function: deducts credits + inserts unlock row in one DB transaction
-    // Cannot be bypassed via DevTools — user_id is read from the JWT on the server
     const { data, error } = await callEdgeFunction<{ success: boolean; already_unlocked?: boolean }>(
       'unlock-problem',
       { action: 'unlock', problem_id: problem.id }
@@ -108,13 +144,15 @@ export default function ProblemDetail() {
     } else if (data?.success) {
       await refreshCredits()
       setIsUnlocked(true)
+      // Only NOW fetch the gated content — after server confirmed the unlock
+      await fetchGatedContent(problem.id)
       toast('success', 'Problem unlocked!')
     }
     setUnlocking(false)
   }
 
   const handleAIBuild = async () => {
-    if (!user || !problem) return
+    if (!user || !problem || !gated) return
     if (!aiBuildUsed && credits < CREDIT_COSTS.AI_BUILD_PANEL) {
       toast('error', `Need ${CREDIT_COSTS.AI_BUILD_PANEL} credits for AI Build Panel.`)
       return
@@ -122,14 +160,12 @@ export default function ProblemDetail() {
     if (aiBuildVisible) { setAiBuildVisible(false); return }
 
     setAiBuildLoading(true)
-    // Server-side: deducts credits first, then calls GROQ, refunds on failure
-    // user_id is read from JWT — cannot be skipped or spoofed from the browser
     const { data, error } = await callEdgeFunction<{ success: boolean; content: string; credits_deducted?: boolean }>(
       'unlock-problem',
       {
         action: 'ai_build',
         problem_id: problem.id,
-        problem: { title: problem.title, description: problem.description, who_faces_it: problem.who_faces_it },
+        problem: { title: problem.title, description: gated.description, who_faces_it: gated.who_faces_it },
       }
     )
     if (error) {
@@ -168,15 +204,12 @@ export default function ProblemDetail() {
   return (
     <div className="page-enter" style={{ padding: 'clamp(1.5rem, 4vw, 3rem) 0' }}>
       <div className="container" style={{ maxWidth: 860 }}>
-        {/* Back */}
         <Link to="/problems" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontSize: 'var(--text-sm)', marginBottom: '1.5rem' }}>
           <ArrowLeft size={15} /> Back to Problems
         </Link>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-          {/* Main card */}
           <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 2rem)' }}>
-            {/* Header */}
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.875rem' }}>
                 {problem.domain && <span className="badge badge-primary">{problem.domain.icon} {problem.domain.name}</span>}
@@ -195,32 +228,45 @@ export default function ProblemDetail() {
 
             <div className="divider" />
 
-            {/* Who faces it */}
+            {/* Who faces it — only rendered if gated content is loaded */}
             <div style={{ marginBottom: '1.25rem' }}>
               <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Who Faces This</h2>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.7 }} className={locked || notLoggedIn ? 'blur-lock' : ''}>
-                {problem.who_faces_it}
-              </p>
+              {gated ? (
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.7 }}>
+                  {gated.who_faces_it}
+                </p>
+              ) : (
+                <div style={{ height: '3rem', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Lock size={14} style={{ color: 'var(--color-text-faint)', marginRight: '0.4rem' }} />
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Unlock to reveal</span>
+                </div>
+              )}
             </div>
 
-            {/* Description */}
+            {/* Description — only rendered if gated content is loaded */}
             <div style={{ marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Problem Description</h2>
-              <div className="watermark-container">
-                {(isUnlocked && user) && (
-                  <div className="watermark">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="watermark-text" style={{ top: `${i * 18 - 20}%` }}>
-                        {user.email} · ProblemPool &nbsp;&nbsp;&nbsp; {user.email} · ProblemPool &nbsp;&nbsp;&nbsp; {user.email} · ProblemPool
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.75, position: 'relative', zIndex: 2 }}
-                  className={locked || notLoggedIn ? 'blur-lock' : ''}>
-                  {problem.description}
-                </p>
-              </div>
+              {gated ? (
+                <div className="watermark-container">
+                  {user && (
+                    <div className="watermark">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="watermark-text" style={{ top: `${i * 18 - 20}%` }}>
+                          {user.email} · ProblemPool &nbsp;&nbsp;&nbsp; {user.email} · ProblemPool &nbsp;&nbsp;&nbsp; {user.email} · ProblemPool
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.75, position: 'relative', zIndex: 2 }}>
+                    {gated.description}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ height: '6rem', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Lock size={14} style={{ color: 'var(--color-text-faint)', marginRight: '0.4rem' }} />
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Unlock to reveal</span>
+                </div>
+              )}
             </div>
 
             {/* Unlock CTA */}
@@ -235,7 +281,7 @@ export default function ProblemDetail() {
                   : (
                     <button onClick={handleUnlock} disabled={unlocking} className="btn btn-primary">
                       {unlocking ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Lock size={14} />}
-                      Unlock for 10 credits
+                      Unlock for {CREDIT_COSTS.UNLOCK_PROBLEM} credits
                     </button>
                   )
                 }
@@ -252,7 +298,7 @@ export default function ProblemDetail() {
               {isUnlocked && (
                 <button onClick={handleAIBuild} disabled={aiBuildLoading} className="btn btn-secondary">
                   {aiBuildLoading ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Cpu size={14} />}
-                  {aiBuildUsed ? 'View Build Plan' : `AI Build Plan — 15 credits`}
+                  {aiBuildUsed ? 'View Build Plan' : `AI Build Plan — ${CREDIT_COSTS.AI_BUILD_PANEL} credits`}
                 </button>
               )}
             </div>

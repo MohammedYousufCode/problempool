@@ -25,17 +25,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const ensureUserCredits = useCallback(async (u: User) => {
-    // Upsert user_credits row (creates with 50 if not exists)
-    const { data: existing } = await supabase.from('user_credits').select('credits, user_id').eq('user_id', u.id).single()
-    if (!existing) {
-      await supabase.from('user_credits').insert({ user_id: u.id, credits: 100, digest_opt_in: false })
-await supabase.from('credit_transactions').insert({ user_id: u.id, amount: 100, reason: 'Welcome bonus' })
+    // Fix: use ignoreDuplicates upsert — eliminates the select→insert race condition.
+    // If two sessions call this simultaneously, only one insert wins; the other
+    // gets error=null but data=[] and falls through to the else branch safely.
+    const { data, error } = await supabase
+      .from('user_credits')
+      .insert({ user_id: u.id, credits: 100, digest_opt_in: false })
+      .select('credits')
 
-      // Send welcome email
-      await callEdgeFunction('send-welcome-email', { email: u.email, name: u.user_metadata?.full_name })
+    if (!error && data && data.length > 0) {
+      // Newly created row — first ever login
+      await supabase.from('credit_transactions').insert({
+        user_id: u.id,
+        amount: 100,
+        reason: 'Welcome bonus',
+      })
+      await callEdgeFunction('send-welcome-email', {
+        email: u.email,
+        name: u.user_metadata?.full_name,
+      })
       setCredits(100)
     } else {
-      setCredits(existing.credits)
+      // Row already existed — read current credits
+      const { data: existing } = await supabase
+        .from('user_credits')
+        .select('credits')
+        .eq('user_id', u.id)
+        .single()
+      if (existing) setCredits(existing.credits)
     }
   }, [])
 

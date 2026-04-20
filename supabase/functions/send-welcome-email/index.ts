@@ -5,12 +5,26 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Fix: HTML-escape all user-supplied values before injecting into email HTML
+function escape(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   const { email, name } = await req.json()
   const RESEND = Deno.env.get('RESEND_API_KEY')!
-  const displayName = name || email?.split('@')[0] || 'there'
+
+  // Sanitize name — strip to plain text, no HTML allowed
+  const rawName    = typeof name === 'string' ? name.trim() : ''
+  const rawEmail   = typeof email === 'string' ? email.trim() : ''
+  const displayName = escape(rawName || rawEmail.split('@')[0] || 'there')
 
   const html = `
 <!DOCTYPE html>
@@ -26,10 +40,12 @@ serve(async (req) => {
     </div>
     <div style="padding:2rem 2.5rem;">
       <h1 style="font-size:1.5rem;font-weight:800;color:#111827;margin:0 0 0.5rem;">Welcome, ${displayName}! 🎉</h1>
-      <p style="color:#6b7280;line-height:1.7;margin:0 0 1.5rem;">You've joined India's #1 problem statement platform. Your account comes loaded with <strong style="color:#0ea5e9;">50 free credits</strong> to get started.</p>
+      <p style="color:#6b7280;line-height:1.7;margin:0 0 1.5rem;">You've joined India's #1 problem statement platform. Your account comes loaded with <strong style="color:#0ea5e9;">100 free credits</strong> to get started.</p>
       <div style="background:#f8f9fb;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem;">
         <h3 style="font-size:0.875rem;font-weight:700;color:#374151;margin:0 0 0.75rem;text-transform:uppercase;letter-spacing:0.05em;">What you can do with your credits</h3>
-        ${[['🔓', 'Unlock full problem details', '10 credits each'], ['🤖', 'Get AI build plans', '15 credits each'], ['📝', 'Submit approved problems', 'Earn +5 credits']].map(([icon, text, cost]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid #e2e4e9;font-size:0.875rem;"><span style="color:#374151;">${icon} ${text}</span><span style="color:#0ea5e9;font-weight:600;">${cost}</span></div>`).join('')}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid #e2e4e9;font-size:0.875rem;"><span style="color:#374151;">🔓 Unlock full problem details</span><span style="color:#0ea5e9;font-weight:600;">10 credits each</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid #e2e4e9;font-size:0.875rem;"><span style="color:#374151;">🤖 Get AI build plans</span><span style="color:#0ea5e9;font-weight:600;">15 credits each</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;font-size:0.875rem;"><span style="color:#374151;">📝 Submit approved problems</span><span style="color:#0ea5e9;font-weight:600;">Earn +5 credits</span></div>
       </div>
       <a href="https://problempool.tech/problems" style="display:block;text-align:center;background:#0ea5e9;color:#fff;text-decoration:none;padding:0.875rem;border-radius:8px;font-weight:700;font-size:1rem;">Browse Problems →</a>
     </div>
@@ -45,11 +61,13 @@ serve(async (req) => {
     headers: { Authorization: `Bearer ${RESEND}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: 'ProblemPool <noreply@mail.problempool.tech>',
-      to: [email],
-      subject: 'Welcome to ProblemPool — 50 free credits inside 🎉',
+      to: [rawEmail],
+      subject: 'Welcome to ProblemPool — 100 free credits inside 🎉',
       html,
     }),
   })
 
-  return new Response(JSON.stringify({ sent: true }), { headers: { ...cors, 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify({ sent: true }), {
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  })
 })
