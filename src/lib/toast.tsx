@@ -20,7 +20,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const remove = (id: string) => setToasts((prev: Toast[]) => prev.filter((t: Toast) => t.id !== id))
 
-  const icons = { success: <CheckCircle size={16} style={{ color: 'var(--color-success)', flexShrink: 0 }} />, error: <AlertCircle size={16} style={{ color: 'var(--color-error)', flexShrink: 0 }} />, info: <Info size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} /> }
+  const icons: Record<ToastType, React.ReactNode> = {
+    success: <CheckCircle size={16} style={{ color: 'var(--color-success)', flexShrink: 0 }} />,
+    error: <AlertCircle size={16} style={{ color: 'var(--color-error)', flexShrink: 0 }} />,
+    info: <Info size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+  }
 
   return (
     <ToastCtx.Provider value={{ toast }}>
@@ -28,7 +32,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div className="toast-container" role="region" aria-label="Notifications" aria-live="polite">
         {toasts.map(t => (
           <div key={t.id} className={`toast toast-${t.type}`}>
-            {icons[t.type]}
+            {icons[t.type] ?? null}
             <span style={{ flex: 1, fontSize: 'var(--text-sm)' }}>{t.message}</span>
             <button onClick={() => remove(t.id)} aria-label="Dismiss" style={{ color: 'var(--color-text-faint)', display: 'flex', flexShrink: 0, padding: '0.1rem' }}>
               <X size={14} />
