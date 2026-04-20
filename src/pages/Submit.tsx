@@ -45,7 +45,7 @@ export default function Submit() {
       problem: form,
     })
     setValidating(false)
-    if (error) { toast('error', error); return }
+    if (error) { toast('error', typeof error === 'string' ? error : error?.message ?? 'Validation failed'); return }
     if (!data) { toast('error', 'Validation failed'); return }
     setValidated(data)
     setStep('preview')
