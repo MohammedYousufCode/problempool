@@ -368,7 +368,7 @@ a, button, [role="button"], input, textarea, select {
 .ticker-inner {
   display: flex;
   width: max-content;
-  animation: ticker 70s linear infinite;
+  animation: ticker 90s linear infinite;
 }
 .ticker-inner:hover { animation-play-state: paused; }
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
