@@ -233,7 +233,7 @@ export default function Landing() {
   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
     <TrendingUp size={13} style={{ color: 'var(--color-success)' }} />
     <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text)' }}>
-      90+ problems submitted by real users
+      100+ problems submitted by real users
     </span>
   </div>
   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
