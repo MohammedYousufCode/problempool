@@ -4,7 +4,7 @@
 
 # ProblemPool
 
-**A curated marketplace of real-world problem statements — for founders, developers, and product managers who want to build things that actually matter.**
+**Stop building things nobody asked for. Find real problems worth solving.**
 
 [![React](https://img.shields.io/badge/React_18-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
@@ -18,34 +18,28 @@
 
 ---
 
-## The Problem with Side Projects
+## What is this?
 
-Most side projects fail before they ship — not because of bad execution, but because they're solving problems nobody actually has.
+ProblemPool is a platform where real people submit problems they've actually faced — and students, developers, and hackathon teams can browse them to find ideas worth building.
 
-ProblemPool fixes this at the source. Real people submit real problems they've observed in Indian markets. Every submission is AI-scored for feasibility, market size, and uniqueness before going live. Builders browse, unlock full context, and get an AI-generated build plan — so they can stop guessing and start shipping.
+Every submission is AI-scored for feasibility and market fit before going live. You can unlock the full problem context and get an AI-generated build plan with a suggested tech stack and MVP scope — so you walk into a hackathon with a validated idea, not a guess.
+
+Built as a final-year BCA project. Fully deployed and production-ready.
 
 ---
 
 ## Features
 
-### For Builders
 - **Browse** AI-validated problem statements across 9 Indian market domains
-- **Unlock** full problem context — who faces it, why it matters, estimated market size, feasibility score
-- **Generate** an AI build plan on demand: recommended tech stack, MVP scope, and a realistic timeline
-- **Vote** "I face this too" to help surface the most validated problems
-- **Search** semantically — find problems by concept, not just keywords
-
-### For Problem Submitters
-- Multi-step structured submission form with guided context fields
-- Instant AI scoring on submission — feasibility, market size, uniqueness
-- Earn credits each time your approved problem is unlocked by a builder
-
-### Platform
-- Google OAuth + email/password authentication via Supabase Auth
-- Credit-based access model with 100 free credits on signup
-- One-time INR credit packs via Razorpay — no subscriptions, ever
-- Dark/light mode with a fully custom CSS design system
-- Admin moderation panel for reviewing and approving submissions
+- **Unlock** full problem details — context, who faces it, why it matters, feasibility score
+- **Generate** an AI build plan — tech stack suggestion, MVP scope, and timeline
+- **Submit** your own observed problems through a structured multi-step form
+- **Vote** "I face this too" to surface the most relevant problems
+- **Search** by concept, not just keywords (semantic search)
+- Google OAuth + email/password sign in
+- Credit-based access with 100 free credits on signup
+- One-time INR credit top-ups via Razorpay — no subscription
+- Dark/light mode
 
 ---
 
@@ -54,20 +48,20 @@ ProblemPool fixes this at the source. Real people submit real problems they've o
 | Layer | Technology |
 |---|---|
 | Frontend | React 18 + TypeScript + Vite 5 |
-| Styling | Custom CSS design system (tokens, dark/light mode) |
+| Styling | Custom CSS design system (dark/light mode) |
 | Routing | React Router DOM v6 |
 | Auth | Supabase Auth — Google OAuth + email/password |
 | Database | Supabase (PostgreSQL) |
-| Edge Functions | Supabase Edge Functions (Deno runtime) |
+| Edge Functions | Supabase Edge Functions (Deno) |
 | AI | Groq API |
-| Payments | Razorpay — INR one-time credit packs |
-| Deployment | Vercel |
+| Payments | Razorpay |
+| Hosting | Vercel |
 
 ---
 
 ## Credit System
 
-Users receive **100 free credits on signup**. Credits unlock premium features and never expire.
+New users get **100 free credits** on signup. Credits never expire.
 
 | Action | Cost |
 |---|---|
@@ -75,7 +69,7 @@ Users receive **100 free credits on signup**. Credits unlock premium features an
 | Generate AI build plan | 15 credits |
 | Semantic search | 5 credits |
 
-**One-time top-up packs — no subscription:**
+**Optional top-up packs:**
 
 | Pack | Credits | Price |
 |---|---|---|
@@ -91,64 +85,60 @@ Users receive **100 free credits on signup**. Credits unlock premium features an
 problempool/
 ├── src/
 │   ├── components/
-│   │   ├── DomainCard.tsx        # Domain tiles with image + skeleton fallback
+│   │   ├── DomainCard.tsx
 │   │   ├── Footer.tsx
-│   │   ├── Navbar.tsx            # Glass nav + mobile bottom bar + admin toggle
-│   │   ├── ProblemCard.tsx       # Locked / unlocked card states
-│   │   └── SkeletonCard.tsx      # Loading skeletons
+│   │   ├── Navbar.tsx
+│   │   ├── ProblemCard.tsx
+│   │   └── SkeletonCard.tsx
 │   ├── lib/
-│   │   ├── auth.tsx              # AuthProvider + useAuth hook
-│   │   ├── supabase.ts           # Supabase client singleton
-│   │   ├── theme.tsx             # Dark/light mode context
-│   │   └── toast.tsx             # Toast notification system
+│   │   ├── auth.tsx
+│   │   ├── supabase.ts
+│   │   ├── theme.tsx
+│   │   └── toast.tsx
 │   ├── pages/
-│   │   ├── Admin.tsx             # Problem moderation dashboard
-│   │   ├── Auth.tsx              # Sign in / sign up
-│   │   ├── Landing.tsx           # Homepage
-│   │   ├── ProblemDetail.tsx     # Full problem view + AI build plan
-│   │   ├── Problems.tsx          # Browse + filter + search
-│   │   ├── Profile.tsx           # Credits, transactions, top-up
-│   │   └── Submit.tsx            # Multi-step submission flow
+│   │   ├── Admin.tsx
+│   │   ├── Auth.tsx
+│   │   ├── Landing.tsx
+│   │   ├── ProblemDetail.tsx
+│   │   ├── Problems.tsx
+│   │   ├── Profile.tsx
+│   │   └── Submit.tsx
 │   ├── types/index.ts
 │   ├── App.tsx
-│   └── index.css                 # Design tokens + global utility classes
+│   └── index.css
 ├── supabase/
 │   └── functions/
-│       ├── validate-problem/     # AI scoring triggered on submission
+│       ├── validate-problem/
 │       ├── razorpay-create-order/
-│       ├── razorpay-webhook/     # Payment confirmation + credit top-up
+│       ├── razorpay-webhook/
 │       ├── send-welcome-email/
 │       └── send-weekly-digest/
-├── public/
 ├── .env.example
-├── vercel.json                   # SPA routing rewrites
+├── vercel.json
 └── vite.config.ts
 ```
 
 ---
 
-## Local Development
+## Running Locally
 
 ### Prerequisites
 
 - Node.js 18+
-- A [Supabase](https://supabase.com) project
-- A [Razorpay](https://razorpay.com) account (test mode works fine)
-- A [Groq](https://groq.com) API key
+- Supabase project
+- Razorpay account (test mode is fine)
+- Groq API key
 
-### Setup
+### Steps
 
 ```bash
 git clone https://github.com/MohammedYousufCode/problempool.git
 cd problempool
 npm install
-```
-
-Copy the example environment file and fill in your credentials:
-
-```bash
 cp .env.example .env.local
 ```
+
+Fill in `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -157,14 +147,12 @@ VITE_APP_URL=http://localhost:3000
 ```
 
 ```bash
-npm run dev        # Starts dev server at http://localhost:3000
-npm run build      # Type-check + production build
-npm run preview    # Preview the production build locally
+npm run dev
 ```
 
 ### Edge Function Secrets
 
-Set these in the Supabase dashboard under **Project Settings → Edge Functions**, or via the CLI:
+Set these in the Supabase dashboard or via CLI:
 
 ```bash
 supabase secrets set GROQ_API_KEY=...
@@ -178,13 +166,11 @@ supabase secrets set RESEND_API_KEY=...
 
 ## Deployment
 
-The project deploys to Vercel. `vercel.json` is already configured to handle SPA client-side routing.
-
 ```bash
 vercel --prod
 ```
 
-Deploy Edge Functions individually via the Supabase CLI:
+Deploy edge functions:
 
 ```bash
 supabase functions deploy validate-problem
@@ -196,23 +182,13 @@ supabase functions deploy send-weekly-digest
 
 ---
 
-## Admin Access
+## Admin Panel
 
-Add admin email addresses to the `ADMIN_EMAILS` array in `src/components/Navbar.tsx`:
-
-```ts
-const ADMIN_EMAILS = [
-  'admin@problempool.tech',
-]
-```
-
-Admin users see a shield icon in the navbar that links to `/admin`. From there, they can approve or reject submitted problems before they go live on the platform.
+Add your email to `ADMIN_EMAILS` in `src/components/Navbar.tsx` to access `/admin`, where you can approve or reject submitted problems before they go live.
 
 ---
 
 ## Domains
-
-Problems are organized across 9 Indian market sectors:
 
 `Agritech` · `CleanTech` · `EdTech` · `Fintech` · `GovTech` · `HealthTech` · `Logistics` · `RetailTech` · `Social Impact`
 
@@ -220,8 +196,8 @@ Problems are organized across 9 Indian market sectors:
 
 ## Author
 
-**Mohammed Yousuf**
-BCA Final Year · Full-Stack Developer · Mysore, Karnataka
+**Mohammed Yousuf**  
+BCA Final Year · Mysore, Karnataka
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mohammed-yousuf-a75a76299/)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/MohammedYousufCode)
